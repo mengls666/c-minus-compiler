@@ -4,7 +4,7 @@ Usage:
 
 * make parser
 
-* make TM
+* make tiny
 
 * ./parser
 
@@ -15,6 +15,9 @@ Usage:
   * scanner.txt: the result of the scanner
 
   * Token_Tree.out: the result of parser
+
+* ./tiny \<filename> 
+  * after the code generator is done, you can run the compiled code with this
 
 ### TODO
 * code generator
