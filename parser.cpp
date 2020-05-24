@@ -2,7 +2,7 @@
 #include <iostream>
 
 using namespace std;
-
+ofstream fout_Tree("Token_tree.txt");
 Parser::Parser(string filename) {
     step = 0;
     tokenIndex = 0;
@@ -19,6 +19,7 @@ Parser::Parser(string filename) {
         cout << "///parser runs successful///" << endl;
     }
     printTree(synTree);
+    fout_Tree.close();
 }
 Token Parser::getToken() {
     lastToken = currentToken;
@@ -138,8 +139,8 @@ TreeNode *Parser::declaration(void) {
             match(SEMI);
         } else if(currentToken.tokenType==SEMI) {//normal var
             t = newNode(Var_dec);
-            t->child[0]=p;
-            t->child[1]=q;
+            t->child[0]=p; //type
+            t->child[1]=q; //id
             match(SEMI);
         } else {
             genError("1");
@@ -563,7 +564,7 @@ void Parser::printTree(TreeNode * t) {
         t=t->sibling;
     }
 }
-int main() {
-    Parser P("test.txt");
-    fout_Tree.close();
-}
+// int main() {
+//     Parser P("test.txt");
+//     fout_Tree.close();
+// }

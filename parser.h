@@ -16,7 +16,7 @@ typedef enum {
     Arry_elem,Call,Args,Unkwn
 } Nodekind;
 typedef enum {Exp_VOID,Exp_INT} ExpType;
-ofstream fout_Tree("Token_tree.txt");
+
 const int MAX_child = 4;
 typedef struct treeNode {
     struct treeNode * child[MAX_child];
