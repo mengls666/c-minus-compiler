@@ -39,7 +39,7 @@ void Parser::match(TokenType ex) {
     }
 }
 TreeNode * Parser::newNode(Nodekind kind) {
-    TreeNode * p = (TreeNode *)malloc(sizeof(TreeNode));
+    TreeNode * p = (TreeNode * )malloc(sizeof(TreeNode));
     int k;
     if(p==NULL) {
         cout << "can't alloc enough memory!" << endl;
@@ -54,7 +54,7 @@ TreeNode * Parser::newNode(Nodekind kind) {
             p->type = Exp_INT;
         } 
         if(kind==Id) {
-            p->attr.name="";
+            sprintf(p->attr.name,"");
         }
         if(kind==Const) {
             p->attr.val = 0;
@@ -114,7 +114,7 @@ TreeNode *Parser::declaration(void) {
     }
     if(p!=NULL && currentToken.tokenType == ID) {
         q = newNode(Id);
-        q->attr.name = currentToken.tokenString.c_str();
+        sprintf(q->attr.name,"%s",currentToken.tokenString.c_str());
         match(ID);
         if(currentToken.tokenType==LS) {// function declaration 
             t = newNode(Fun);
@@ -205,7 +205,7 @@ TreeNode * Parser::param(TreeNode *k) {
         t->child[0] = p;
         if(currentToken.tokenType==ID) {
             q = newNode(Id);
-            q->attr.name = currentToken.tokenString.c_str();
+            sprintf(q->attr.name,"%s",currentToken.tokenString.c_str());
             t->child[1]=q;
             match(ID);
         } else {
@@ -248,7 +248,7 @@ TreeNode * Parser::local_declaration(void) {
         }
         if(p != NULL && currentToken.tokenType == ID) {
             TreeNode * q2 = newNode(Id);
-            q2 -> attr.name = currentToken.tokenString.c_str();
+            sprintf(q2->attr.name,"%s",currentToken.tokenString.c_str());
             p->child[1] = q2;
             match(ID);
             if(currentToken.tokenType==LM) {
@@ -390,7 +390,7 @@ TreeNode *Parser::expression(void) {
         TreeNode *p = NULL;
         if(currentToken.tokenType==ASSIGN) {
             p = newNode(Assign);
-            p->attr.name = lastToken.tokenString.c_str();
+            sprintf(p->attr.name,"%s",currentToken.tokenString.c_str());
             match(ASSIGN);
             p->child[0] = t;
             p->child[1] = expression();
@@ -487,8 +487,9 @@ TreeNode *Parser::var(void) {
     TreeNode *q = NULL;
     if(currentToken.tokenType==ID) {
         p = newNode(Id);
-        p -> attr.name = currentToken.tokenString.c_str();
+        sprintf(p->attr.name,"%s",currentToken.tokenString.c_str());
         match(ID);
+
         if(currentToken.tokenType == LM) {
             match(LM);
             q = expression();
@@ -552,8 +553,8 @@ void Parser::printTree(TreeNode * t) {
     int i;
     while(t != NULL) {
         printSpace(step);
-        fout_Tree << t ->nodekind << endl;
-
+        if(t->nodekind != Id)fout_Tree << t ->nodekind << endl;
+        else fout_Tree << t ->nodekind <<":" << t->attr.name<< endl;
         step++;
         for(i=0;i < MAX_child;i++) {
             if(t->child[i] != NULL) {

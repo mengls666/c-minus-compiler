@@ -2,11 +2,11 @@
 
 Usage:
 
-* make parser
+* make analyzer
 
 * make TM
 
-* ./parser
+* ./analyzer
 
   then you will see three txts inthe folder
   
@@ -16,8 +16,11 @@ Usage:
 
   * Token_Tree.out: the result of parser
 
+  * listing.txt: the generated system table
+
 * ./tiny \<filename> 
   * after the code generator is done, you can run the compiled code with this
 
 ### TODO
-* code generator
+* finish the code generator
+* the analyzer may still need more debugging

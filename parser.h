@@ -2,6 +2,8 @@
 #include <fstream>
 #include "scanner.h"
 using namespace std;
+
+#define HASH_TABLE_SIZE 3533 // size of hash table, just a prime
 /*
 node type list:
 int, id, void, const, var, var_declaration,
@@ -16,7 +18,8 @@ typedef enum {
     Arry_elem,Call,Args,Unkwn
 } Nodekind;
 typedef enum {Exp_VOID,Exp_INT} ExpType;
-
+class ScopeRec;
+typedef ScopeRec* Scope;
 const int MAX_child = 4;
 typedef struct treeNode {
     struct treeNode * child[MAX_child];
@@ -26,10 +29,44 @@ typedef struct treeNode {
     union {
         TokenType op;
         int val;
-        const char * name;
+        char name[100];
     } attr;
     ExpType type;
+    Scope scope;
 } TreeNode;
+/* The record in the bucket lists for each identifier,
+*
+*/
+class BucketListRec {
+public:
+	// data members
+	string id;
+	vector<int> lines;
+	TreeNode *node;
+	int memloc;
+	BucketListRec *next;
+
+	// methods
+	BucketListRec(string _id, TreeNode *_node, int _memloc) {
+		id = _id; node = _node; memloc = _memloc;
+	};
+};
+typedef vector<BucketListRec> BucketList;
+
+/* The record of scope, maintaining one symbol table each */
+class ScopeRec {
+public:
+	// data members
+	string scopeName;
+	int nestedLevel;
+	ScopeRec *parentScope;
+	/* symbol table of this scope*/
+	BucketList hashTable[HASH_TABLE_SIZE];
+
+	// methods
+	ScopeRec(string _scopeName) { scopeName = _scopeName; };
+};
+
 
 class Parser {
 public:

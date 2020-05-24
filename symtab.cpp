@@ -5,7 +5,6 @@
 #include <vector>
 #include <string>
 #include "symtab.h"
-
 using namespace std;
 
 /* SHIFT is the power of two used as multiplier
@@ -182,9 +181,10 @@ void printIdentifier(FILE * listing, BucketList *hTable)
 		for (int i = 0; i < l.size(); i++) {
 			node = l[i].node;
 			fprintf(listing, "%-12s", l[i].id.c_str());
-			if (node->nodekind == Var_dec) {
+			if (node->nodekind == Var_dec ||node->nodekind == Param ) {
 				varNode = node;
-				if (varNode->child[1]->nodekind == Arr_dec) {
+				if ((node->nodekind == Var_dec && varNode->child[1]->nodekind == Arr_dec)|| 
+				(node->nodekind == Param && varNode->child[2]!=NULL))  {
 					fprintf(listing, "Array       ");
 					if(varNode->child[0]->nodekind == Int) {
                         dataType = Exp_INT;
@@ -204,19 +204,19 @@ void printIdentifier(FILE * listing, BucketList *hTable)
 			else if (node->nodekind == Fun) {
 				funNode = node;
 				fprintf(listing, "Function    ");
-				if(varNode->child[0]->nodekind == Int) {
+				if(funNode->child[0]->nodekind == Int) {
                     dataType = Exp_INT;
-                } else if(varNode->child[0]->nodekind == Void) {
+                } else if(funNode->child[0]->nodekind == Void) {
                     dataType = Exp_VOID;
                 }
 			}
 
 			switch (dataType)
 			{
-			case Void:
+			case Exp_VOID:
 				fprintf(listing, "void    ");
 				break;
-			case Int:
+			case Exp_INT:
 				fprintf(listing, "int     ");
 			default:
 				break;
@@ -258,8 +258,8 @@ void printSymTab(FILE * listing) {
 	}
 	return; 
 }
-int main() {
-    Parser P("test.txt");
-    FILE * symtab = fopen("symtab.txt","rw");
-    printSymTab(symtab);
-}
+// int main() {
+//     Parser P("test.txt");
+//     FILE * symtab = fopen("symtab.txt","rw");
+//     printSymTab(symtab);
+// }

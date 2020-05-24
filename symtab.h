@@ -6,42 +6,8 @@
 #include "parser.h"
 using namespace std;
 
-#define HASH_TABLE_SIZE 3533 // size of hash table, just a prime
 
-/* The record in the bucket lists for each identifier,
-*
-*/
 
-class BucketListRec {
-public:
-	// data members
-	string id;
-	vector<int> lines;
-	TreeNode *node;
-	int memloc;
-	BucketListRec *next;
-
-	// methods
-	BucketListRec(string _id, TreeNode *_node, int _memloc) {
-		id = _id; node = _node; memloc = _memloc;
-	};
-};
-typedef vector<BucketListRec> BucketList;
-
-/* The record of scope, maintaining one symbol table each */
-class ScopeRec {
-public:
-	// data members
-	string scopeName;
-	int nestedLevel;
-	ScopeRec *parentScope;
-	/* symbol table of this scope*/
-	BucketList hashTable[HASH_TABLE_SIZE];
-
-	// methods
-	ScopeRec(string _scopeName) { scopeName = _scopeName; };
-};
-typedef ScopeRec* Scope;
 
 Scope sc_create(string scopeName);
 // basic operations on scope stack
