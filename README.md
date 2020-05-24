@@ -4,7 +4,7 @@ Usage:
 
 * make parser
 
-* make tiny
+* make TM
 
 * ./parser
 
