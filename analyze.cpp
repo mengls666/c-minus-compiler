@@ -130,7 +130,7 @@ static void insertNode(TreeNode * t) {
 			}
             if(varNode->child[2]!= NULL && varNode->child[2]->nodekind == Var_dec) {
                 if (st_lookup_nonest(sc_top(), varNode->child[1]->attr.name) < 0) {
-			        int size = 0;
+			        int size = 1;
 				    st_insert(varNode->child[1]->attr.name, varNode->lineno, size ,t);
 			    }
 			    else {

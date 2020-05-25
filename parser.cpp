@@ -251,14 +251,21 @@ TreeNode * Parser::local_declaration(void) {
             sprintf(q2->attr.name,"%s",currentToken.tokenString.c_str());
             p->child[1] = q2;
             match(ID);
-            if(currentToken.tokenType==LM) {
-                TreeNode *q3 = newNode(Var_dec);
-                p->child[3] = q3;
+            if(currentToken.tokenType==LM) {// array declaration
+                TreeNode *m = newNode(Arr_dec);
                 match(LM);
+                match(NUM);
+                TreeNode *q3 = newNode(Const);
+                q3->attr.val = atoi(lastToken.tokenString.c_str());
+                m->child[0]=q2;//id
+                m->child[1]=q3;//size
+                p->child[1]=m;//kind->array
                 match(RM);
                 match(SEMI);
-            } else if(currentToken.tokenType==SEMI){
+            } else if(currentToken.tokenType==SEMI) {//normal var
                 match(SEMI);
+            } else {
+                genError("1");
             }
         } else {
             genError("5");
@@ -464,6 +471,7 @@ TreeNode * Parser::factor(TreeNode * k) {
                 if(currentToken.tokenType==LS && k -> nodekind != Arry_elem) {
                     t = call(k);
                 }
+                t=k;
                 break;
             case NUM:
                 t = newNode(Const);
@@ -553,8 +561,9 @@ void Parser::printTree(TreeNode * t) {
     int i;
     while(t != NULL) {
         printSpace(step);
-        if(t->nodekind != Id)fout_Tree << t ->nodekind << endl;
-        else fout_Tree << t ->nodekind <<":" << t->attr.name<< endl;
+        if(t->nodekind != Id&& t->nodekind != Op)fout_Tree << t ->nodekind << endl;
+        else if(t->nodekind == Id)fout_Tree << t ->nodekind <<":" << t->attr.name<< endl;
+        else fout_Tree << t ->nodekind <<":" << t->attr.op<< endl;
         step++;
         for(i=0;i < MAX_child;i++) {
             if(t->child[i] != NULL) {
