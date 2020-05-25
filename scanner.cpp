@@ -15,9 +15,9 @@ Scanner::Scanner() {
     lineNumber = 0;
 }
 void Scanner::scan(void) {
-    cout << "///scanner begin///" << endl;
+    cout << "scanner begin" << endl;
     bool doubleSym = false; // <=,>= and so on
-    getSourse("tmp.txt");
+    getSourse("delComment.txt");
     int state = START;
     lineNumber = 0;
     char ch;
@@ -115,8 +115,8 @@ void Scanner::getSourse(string path) {
     charIndex=0;
 } 
 void Scanner::delComments() {
-    cout << "///begin to scan the comments///" << endl;
-    ofstream fout("tmp.txt");
+    cout << "begin to scan the comments" << endl;
+    ofstream fout("delComment.txt");
     int state = 1;
     char ch;
     while(state <= 5) {

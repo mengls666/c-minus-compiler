@@ -9,7 +9,7 @@
 #include "code.h"
 /* TM location number for current instruction emission */
 FILE* code;
-bool TraceCode = 1;
+bool TraceCode;
 static int emitLoc = 0 ;
 
 /* Highest TM location emitted so far
@@ -17,9 +17,6 @@ static int emitLoc = 0 ;
    emitBackup, and emitRestore */
 static int highEmitLoc = 0;
 
-void InitCode(const char * path) {
-    code = fopen(path,"w");
-}
 
 /* Procedure emitComment prints a comment line 
  * with comment c in the code file

@@ -8,15 +8,15 @@ extern Scope global;
 extern bool TraceCode;
 // this serves as a stack pointer maintained by the compiler
 static int frame_offset = initFO;
+extern FILE *listing;
 
 
 
 static int param_offset(TreeNode * param_list) {
     int offset = 0;
-    for (TreeNode * node = param_list; node != nullptr; node = node->sibling) {
+    for (TreeNode * node = param_list; node != nullptr && node->nodekind != Void; node = node->sibling) {
         offset += 1;
     }
-
     return offset;
 }
 
@@ -245,6 +245,9 @@ void gentiny_expr(TreeNode * node, track & track, bool isAddress) {
         case Id:
             gentiny_expr_id(node, track, isAddress);
             break;
+        case Arry_elem:
+            gentiny_expr_id(node, track, isAddress);
+            break;
     }
 }
 
@@ -281,7 +284,7 @@ void gentiny_expr_call(TreeNode * node, track & track) {
     // frame offset is the current stack pointer
     // compute arguments
     int param_offset = 0;
-    for (TreeNode * param = node->child[1]; param != nullptr; param = param->sibling) {
+    for (TreeNode * param = node->child[1]->child[0]; param != nullptr && param->nodekind != Void; param = param->sibling) {
         // param is a exp node
         gentiny_code(param, track);
         // after this, result will be stored in ac. Store this
@@ -456,24 +459,25 @@ void gentiny_expr_const(TreeNode * node, track & track) {
 void gentiny_expr_id(TreeNode * node, track & track, bool isAddress) {
     if(TraceCode)
         emitComment("--> ExprId");
-
+    string __name;
+    if(node->nodekind == Id) __name = node->attr.name;
+    else __name = node->child[0]->attr.name;
     Scope s = track.current_scope;
-    int mem_loc = st_lookup(s, node->attr.name);
+    int mem_loc = st_lookup(s, __name);
     int idOffset = initFO - mem_loc; // offset in the frame
-
     emitRM("LDC", ac, idOffset, 0, "ExprId: load id offset to ac");
     emitRO("ADD", ac, fp, ac, "ExprId: fp + offset = base address");
-
-
-    BucketList list = st_lookup_list(s, node->attr.name);
+    
+    
+    BucketList list = st_lookup_list(s, __name);
     TreeNode * var_node = nullptr;
     for (const auto & rec : list) {
-        if (rec.id == node->attr.name) {
+        if (rec.id == __name) {
             var_node = rec.node;
         }
     }
     // this is for the case in which x is a array parameter
-    if (var_node->nodekind == Arr_dec || node->nodekind == Arry_elem) {
+    if (var_node->nodekind == Param && var_node->child[2] != NULL) {
         // load absolute address
         emitRM("LD", ac, 0, ac, "load absolute address");
     }
@@ -492,10 +496,11 @@ void gentiny_expr_id(TreeNode * node, track & track, bool isAddress) {
 
     // isAddress - lhs like a[11], need the address of a[11]
     // the weird case is for cases like x[10], output(x)
-    if(isAddress or (var_node->nodekind == Arr_dec and not node->nodekind == Arry_elem)){
+    if(isAddress || (var_node->child[1]->nodekind == Arr_dec && !(node->nodekind == Arry_elem))){
         emitRM("LDA", ac, 0, ac, "ExprId: load id address");
     }else{
         emitRM("LD", ac, 0, ac, "ExprId: load id value");
+        
     }
 
     if(TraceCode)
@@ -531,8 +536,10 @@ void gentiny_decl_var(TreeNode * node, track & track) {
         frame_offset -= 1;
 
 
-    if(TraceCode)
+    if(TraceCode){
         emitComment("<-- DeclVar");
+    }
+       
     return ;
 }
 
@@ -560,7 +567,7 @@ void gentiny_decl_fun(TreeNode * node, track & track) {
     // modify stack pointer
     if(node->child[2]->child[0]->nodekind != Void)
         frame_offset = initFO - param_offset(node->child[2]->child[0]);
-
+    else frame_offset = initFO;
     if (TraceCode)
         emitComment("-> Begin function body");
     // actually generate the code

@@ -45,10 +45,13 @@ static void nullProc(TreeNode * t){
 
 /* output the error message(lineno, error message...) */
 static void typeError(TreeNode *node, string message) {
-	fprintf(listing, "Error in Line[%d]: %s, attr.name:%s\n", node->lineno, message.c_str(),node->attr.name);
+	fprintf(listing, "Error in Line[%d]: %s\n", node->lineno, message.c_str());
 	Error = true; // static error signal in analysis
 }
 
+static void typeWarning(TreeNode *node, string message) {
+	fprintf(listing, "Warning in Line[%d]: %s\n", node->lineno, message.c_str());
+}
 /* insertNode inserts t's identifier into the symbol table */
 static void insertNode(TreeNode * t) {
 	switch (t->nodekind)
@@ -234,11 +237,11 @@ static void initSymTab() {
     params1->child[0] = paramX;
     TreeNode * paramX_int = (TreeNode *)malloc(sizeof(TreeNode));
     paramX_int->nodekind = Int;
-    params1->child[0] = paramX_int;
+    paramX->child[0] = paramX_int;
     TreeNode * paramX_id = (TreeNode *)malloc(sizeof(TreeNode));
     paramX_id->nodekind = Id;
     sprintf(paramX_id->attr.name,"x");
-    params1->child[1] = paramX_id;
+    paramX->child[1] = paramX_id;
 
 	/* insert the input/output as system call into global, lineno 0*/
     st_insert("input", 0, 0, inputDecl);
@@ -303,7 +306,9 @@ static void checkNode(TreeNode *t) {
 		{
 			TreeNode * idNode = t->child[0];
 			TreeNode *exprNode = t->child[1];
-			string idName = idNode->attr.name;
+			string idName;
+    		if(t->child[0]->nodekind == Id) idName = t->child[0]->attr.name;
+    		else idName = t->child[0]->child[0]->attr.name;
 			// fix: error(int a; a[11] = ;) error(int a[11]; a = ;)
 			// need to look up is_array in the Symbol table
             BucketList idRec = st_lookup_list(sc_top(), idName);
@@ -325,7 +330,9 @@ static void checkNode(TreeNode *t) {
 				 typeError(t->child[0], "assignment to an array variable");
 				// has done in Id
 			}
-			else if(idNode->nodekind == Arry_elem && idDeclNode->nodekind == Var_dec){
+			else if(idNode->nodekind == Arry_elem && 
+			(idDeclNode->child[1]->nodekind != Arr_dec //not arry_dec
+			&& idDeclNode->child[2] == NULL)){ //not arry_param
 			    typeError(t->child[0], "index of a non-array variable is invalid");
 			}
 			break;
@@ -377,7 +384,7 @@ static void checkNode(TreeNode *t) {
 					param = param->sibling;
 				}
 			}
-			if (args != NULL) {
+			if (args != NULL && args->nodekind != Void) {
 				typeError(args, "the number of paramters is inconsistent with declaration");
 			}
 
@@ -421,11 +428,11 @@ static void checkNode(TreeNode *t) {
 			if (idDeclNode->child[1]->nodekind == Arr_dec ||//array decl
 			(idDeclNode-> child[2]!=NULL && idDeclNode->child[2]->nodekind == Var_dec)  //array param
 			) {
-				typeError(t, "assignment to an array variable");
+				typeWarning(t, "assignment to an array variable");
 				break;
 			}
 			else {
-				if(idDeclNode->child[0]->nodekind == Void)idExpr->type = Exp_VOID; /* identifier's kind == declartionNode's kind*/
+				if(idDeclNode->child[0]->nodekind == Void)idExpr->type = Exp_INT; /* identifier's kind == declartionNode's kind*/
 				else idExpr->type = Exp_INT;
 			 }
 			break;
@@ -433,19 +440,19 @@ static void checkNode(TreeNode *t) {
 		case Arry_elem: /*id['expr'] */
 		{
 			TreeNode * idExpr = t;
-			BucketList idRec = st_lookup_list(sc_top(), idExpr->attr.name);
+			BucketList idRec = st_lookup_list(sc_top(), idExpr->child[0]->attr.name);
 
 			// find the treeNode stored in idRec(DeclNode of the identifier)
 			TreeNode *idDeclNode = nullptr;
 			for (int i = 0; i < idRec.size(); i++) {
-				if (idRec[i].id == idExpr->attr.name) {
+				if (idRec[i].id == idExpr->child[0]->attr.name) {
 					idDeclNode = idRec[i].node;
 				}
 			}
 
 			if (idDeclNode == nullptr) {
-				// cout << t->lineno << endl;
-				// cout << "[Analyze.checkNode] Error: Id cannot find in the symbol table" << endl;
+				//cout << t->lineno << endl;
+				//cout << "[Analyze.checkNode] Error: Id cannot find in the symbol table" << endl;
 				break;
 			}
 			if (idDeclNode->child[1]->nodekind == Arr_dec ||//array decl
@@ -459,7 +466,7 @@ static void checkNode(TreeNode *t) {
 				}
 			}
 			else {
-				if(idDeclNode->child[0]->nodekind == Void)idExpr->type = Exp_VOID; /* identifier's kind == declartionNode's kind*/
+				if(idDeclNode->child[0]->nodekind == Void)idExpr->type = Exp_INT; /* identifier's kind == declartionNode's kind*/
 				else idExpr->type = Exp_INT;
 			 }
 			break;
@@ -514,7 +521,6 @@ void buildTable(TreeNode *syntaxTree) {
 	if (TraceAnalyze) {
 		fprintf(listing, "[TraceAnalyze]: Symbol table created in analysis process: \n");
 		printSymTab(listing);
-		fclose(listing);
 	}
 	return;
 }
@@ -533,14 +539,4 @@ void typeCheck(TreeNode * syntaxTree)
 	sc_push(global);
 	traverse(syntaxTree,pushScope ,checkNode);
 	sc_pop();
-}
-int main() {
-	InitCode("code.txt");
-	listing = fopen("listing.txt","w");
-	Parser P("test.txt");
-	buildTable(P.synTree);
-	//sc_pop();
-	typeCheck(P.synTree);
-	//traverse(P.synTree,show,none);
-
 }
