@@ -15,4 +15,4 @@ gc: gencode.cpp gencode.h
 TM: TM.C
 	@gcc TM.C -o tiny
 clean:
-	@rm  -f *.o scanner.txt Token_tree.txt
+	@rm  -f *.o scanner.txt Token_tree.txt delComment.txt
