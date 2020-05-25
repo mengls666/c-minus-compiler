@@ -517,13 +517,8 @@ TreeNode * Parser::call(TreeNode * k) {
         t -> child[0] = k;
     }
     match(LS);
-    if(currentToken.tokenType==RS) {
-        match(RS);
-        return t;
-    } else if( k != NULL) {
-        t -> child[1] = args();
-        match(RS);
-    }
+    t -> child[1] = args();
+    match(RS);
     return t;
 }
 TreeNode *Parser::args(void) {
@@ -549,6 +544,8 @@ TreeNode *Parser::args(void) {
     }
     if(s != NULL) {
         t -> child[0] = s;
+    } else {
+        t->child[0] = newNode(Void);
     }
     return t;
 }

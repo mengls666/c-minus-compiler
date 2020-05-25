@@ -26,6 +26,7 @@ static void traverse(TreeNode * t, void(*preProc) (TreeNode *), void(*postProc) 
 		for (int i = 0; i < 4; i++) {
 			if((t->nodekind == Var_dec || t->nodekind==Fun) && i==1) continue;
 			if(i>=1 &&  t->nodekind == Param) continue;
+			if(t->nodekind == Arry_elem && i == 0) continue;
 			traverse(t->child[i], preProc, postProc);
 		}
 		postProc(t);
@@ -54,18 +55,39 @@ static void insertNode(TreeNode * t) {
 	{
 	// only handles Compound - creating local scopes
 	    case Comp:
-			if (preserveLastScope) // first level scope of function
+			if (preserveLastScope) {// first level scope of function{
+				t->scope = NULL;
 				preserveLastScope = false;
+			}
 			else {
 				Scope scope = sc_create(analyzingFuncName);
 				sc_push(scope);
 				t->scope = scope;
+				//cout << "insertting:pushed compound" << t << endl;
             }
             break;
 	// add lineno when node is IdExprNode/CallExprNode
 		case Id:
 		{
 			TreeNode *idNode = t;
+			if (st_lookup(sc_top(), idNode->attr.name) < 0) {
+				typeError(t, "undeclared variable");
+			}
+			else {
+				/* NULL in loc field means add in lineno field */
+				if(st_lookup_nonest(sc_top(), idNode->attr.name) < 0){
+					// not in current scope, invoke st_insert_nearest
+					st_insert_nearest(idNode->attr.name, idNode->lineno, 0, t);
+				}
+				else {
+					st_insert(idNode->attr.name, idNode->lineno, 0, t);
+				}
+			}
+			break;
+		}
+		case Arry_elem:
+		{
+			TreeNode *idNode = t->child[0];
 			if (st_lookup(sc_top(), idNode->attr.name) < 0) {
 				typeError(t, "undeclared variable");
 			}
@@ -160,6 +182,7 @@ static void insertNode(TreeNode * t) {
 			st_insert(funNode->child[1]->attr.name, funNode->lineno, 0, t);
 			sc_push(sc_create(funNode->child[1]->attr.name));
 			t->scope = sc_top();
+			//cout << "insertting:pushed " << t->scope->scopeName<<t << endl;
 			preserveLastScope = true;
 			analyzingFuncName = funNode->child[1]->attr.name;
 			break;
@@ -327,7 +350,7 @@ static void checkNode(TreeNode *t) {
 			//callNode->nodekind = callDeclNode->nodekind;
 
 			/* check argments type */
-			TreeNode *args = t->child[1];
+			TreeNode *args = t->child[1]->child[0];
 			TreeNode *params = (callDeclNode->child[2]->child[0]);
 			int paramNum = 0;
 			/* calculate the number of parameters in function declaration*/
@@ -340,13 +363,13 @@ static void checkNode(TreeNode *t) {
 					break;
 			}
 			
-			TreeNode *param = callDeclNode->child[2];
+			TreeNode *param = callDeclNode->child[2]->child[0];
 			/* check the parameter type */
 			for (int i = 0; i < paramNum; i++) {
 				if (args == NULL) {
 					typeError(t, "the number of parameters is inconsistent with declaration");
 				}
-				else if (args->child[0]->nodekind == Void) {
+				else if (args->nodekind == Void) {
 					typeError(args, "invalid argument type: void");
 				}
 				else {
@@ -368,16 +391,16 @@ static void checkNode(TreeNode *t) {
 			op2 = t->child[1];
 			exprT = t;
 
-			if (op1->nodekind == Void || op2->nodekind == Void) {
+			if (op1->type == Exp_VOID || op2->type == Exp_VOID) {
 				typeError(t->child[0], "operand's type is invalid: void");
 			}
 			else {
-				exprT->nodekind = Int;
+				exprT->type = Exp_INT;
 			}
 			break;
 		}
 
-		case Id: /* id | id['expr'] */
+		case Id: /* id */
 		{
 			TreeNode * idExpr = t;
 			BucketList idRec = st_lookup_list(sc_top(), idExpr->attr.name);
@@ -395,26 +418,56 @@ static void checkNode(TreeNode *t) {
 				// cout << "[Analyze.checkNode] Error: Id cannot find in the symbol table" << endl;
 				break;
 			}
-			// if (idDeclNode->is_array) {
-			//     if(t->children.size() == 0){
-			//         // typeError(t, "assignment to an array variable");
-			//         break;
-			//     }
-			// 	ExprNode *indexNode = dynamic_cast<ExprNode*>(t->children[0]);
-			// 	if (indexNode->kind != Int) {
-			// 		typeError(indexNode, "the index of array should be Int type");
-			// 	}
-			// 	else {
-			// 		idExpr->kind = Int;
-			// 	}
-			// }
-			// else {
-			// 	idExpr->kind = idDeclNode->kind; /* identifier's kind == declartionNode's kind*/
-			// }
+			if (idDeclNode->child[1]->nodekind == Arr_dec ||//array decl
+			(idDeclNode-> child[2]!=NULL && idDeclNode->child[2]->nodekind == Var_dec)  //array param
+			) {
+				typeError(t, "assignment to an array variable");
+				break;
+			}
+			else {
+				if(idDeclNode->child[0]->nodekind == Void)idExpr->type = Exp_VOID; /* identifier's kind == declartionNode's kind*/
+				else idExpr->type = Exp_INT;
+			 }
 			break;
 		}
+		case Arry_elem: /*id['expr'] */
+		{
+			TreeNode * idExpr = t;
+			BucketList idRec = st_lookup_list(sc_top(), idExpr->attr.name);
 
+			// find the treeNode stored in idRec(DeclNode of the identifier)
+			TreeNode *idDeclNode = nullptr;
+			for (int i = 0; i < idRec.size(); i++) {
+				if (idRec[i].id == idExpr->attr.name) {
+					idDeclNode = idRec[i].node;
+				}
+			}
 
+			if (idDeclNode == nullptr) {
+				// cout << t->lineno << endl;
+				// cout << "[Analyze.checkNode] Error: Id cannot find in the symbol table" << endl;
+				break;
+			}
+			if (idDeclNode->child[1]->nodekind == Arr_dec ||//array decl
+			(idDeclNode-> child[2]!=NULL && idDeclNode->child[2]->nodekind == Var_dec)  //array param
+			) {
+				if (idExpr->child[1]->type != Exp_INT) {
+					typeError(idExpr, "the index of array should be Int type");
+				}
+				else {
+					idExpr->type = Exp_INT;
+				}
+			}
+			else {
+				if(idDeclNode->child[0]->nodekind == Void)idExpr->type = Exp_VOID; /* identifier's kind == declartionNode's kind*/
+				else idExpr->type = Exp_INT;
+			 }
+			break;
+		}
+		case Const:
+		{
+			t->type = Exp_INT;
+		}
 
 	    /* do not need to checkNode DeclNode */
 	    default:
@@ -465,11 +518,18 @@ void buildTable(TreeNode *syntaxTree) {
 	}
 	return;
 }
+// void show(TreeNode * t) {
+// 	if(t->nodekind == Comp) {
+// 		cout << t << endl;
+// 	}
+// }
+// void none(TreeNode *t) {
 
-
+// }
 /* invoked as postorder traverse: traverse(syntaxTree, pushScope, checkNode) */
 void typeCheck(TreeNode * syntaxTree)
 {
+	if(syntaxTree == NULL) return;
 	sc_push(global);
 	traverse(syntaxTree,pushScope ,checkNode);
 	sc_pop();
@@ -479,5 +539,8 @@ int main() {
 	listing = fopen("listing.txt","w");
 	Parser P("test.txt");
 	buildTable(P.synTree);
+	//sc_pop();
 	typeCheck(P.synTree);
+	//traverse(P.synTree,show,none);
+
 }
